@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaTurbo — 3D Engine Viewer</title>
+    <link rel="stylesheet" href="/static/css/viewer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Bar -->
+    <header id="topbar">
+        <div class="logo">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <circle cx="14" cy="14" r="12" stroke="#00E5FF" stroke-width="2" fill="none"/>
+                <path d="M14 4 L14 24 M4 14 L24 14" stroke="#00E5FF" stroke-width="1" opacity="0.3"/>
+                <circle cx="14" cy="14" r="5" fill="#00E5FF" opacity="0.2"/>
+                <circle cx="14" cy="14" r="2" fill="#00E5FF"/>
+            </svg>
+            <span class="logo-text">NovaTurbo</span>
+            <span class="logo-sub">3D Engine Viewer</span>
+        </div>
+        <div class="toolbar">
+            <button id="btn-reset-cam" title="Reset Camera"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg></button>
+            <button id="btn-wireframe" title="Toggle Wireframe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg></button>
+            <button id="btn-section" title="Toggle Section Cut"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/></svg></button>
+            <button id="btn-explode" title="Explode View"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button>
+            <div class="separator"></div>
+            <button id="btn-screenshot" title="Screenshot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+            <div class="separator"></div>
+            <button id="btn-sim-thermal" title="Thermal Simulation" class="sim-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg><span class="btn-label">Thermal</span></button>
+            <button id="btn-sim-flow" title="Airflow Simulation" class="sim-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></svg><span class="btn-label">Airflow</span></button>
+            <button id="btn-sim-stress" title="Stress Analysis" class="sim-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="btn-label">Stress</span></button>
+            <button id="btn-sim-flame" title="Flame Simulation" class="sim-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 14c0-2 1-3 2-4 1-1 2-2 2-4 2 1 4 4 4 7a6 6 0 1 1-12 0c0-2 1-4 3-6"/><path d="M12 14c0 1-1 2-1 3a2 2 0 1 0 4 0c0-1-.5-1.7-1.2-2.5-.6-.7-1.1-1.5-1.2-2.5-.8.7-1.6 1.5-1.6 2.9"/></svg><span class="btn-label">Flame</span></button>
+            <div class="separator"></div>
+            <button id="btn-lattice" title="Toggle TPMS Lattice" class="sim-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span class="btn-label">Lattice</span></button>
+            <div class="separator"></div>
+            <button id="btn-dashboard" title="Engineering Dashboard" class="sim-btn dash-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="btn-label">Dashboard</span></button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div id="main">
+        <!-- Left Panel: Component List -->
+        <aside id="panel-left">
+            <div class="panel-header">
+                <h3>Components</h3>
+                <button id="btn-toggle-all" class="btn-small">Hide All</button>
+            </div>
+            <div id="component-list">
+                <div class="loading-placeholder">Loading...</div>
+            </div>
+            <div class="panel-section">
+                <h4>Display</h4>
+                <div class="control-row">
+                    <label>Opacity</label>
+                    <input type="range" id="slider-opacity" min="0.1" max="1" step="0.05" value="1">
+                    <span id="opacity-val">100%</span>
+                </div>
+                <div class="control-row" id="section-controls" style="display:none;">
+                    <label>Section Plane</label>
+                    <input type="range" id="slider-section" min="0" max="100" step="1" value="50">
+                    <span id="section-val">50%</span>
+                </div>
+                <div class="control-row" id="explode-controls" style="display:none;">
+                    <label>Explode</label>
+                    <input type="range" id="slider-explode" min="0" max="100" step="1" value="0">
+                    <span id="explode-val">0%</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 3D Viewport -->
+        <div id="viewport">
+            <canvas id="three-canvas"></canvas>
+            <div id="viewport-overlay">
+                <div id="axis-indicator"></div>
+                <!-- Color Legend (shown during simulations) -->
+                <div id="sim-legend" style="display:none;">
+                    <div id="legend-title">Temperature (K)</div>
+                    <div id="legend-bar">
+                        <canvas id="legend-canvas" width="20" height="200"></canvas>
+                        <div id="legend-labels">
+                            <span id="legend-max">1100</span>
+                            <span id="legend-mid">550</span>
+                            <span id="legend-min">288</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Simulation status badge -->
+                <div id="sim-badge" style="display:none;">
+                    <span id="sim-badge-icon"></span>
+                    <span id="sim-badge-text">Thermal</span>
+                </div>
+            </div>
+            <div id="loading-screen">
+                <div class="loader">
+                    <div class="spinner"></div>
+                    <p>Loading Engine Model...</p>
+                    <div id="load-progress">0 / 0 components</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Engine Data -->
+        <aside id="panel-right">
+            <div class="panel-header">
+                <h3>Engine Data</h3>
+            </div>
+            <div id="engine-info">
+                <div class="loading-placeholder">Loading...</div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Status Bar -->
+    <footer id="statusbar">
+        <span id="status-left">Ready</span>
+        <span id="status-center"></span>
+        <span id="status-right">
+            <span id="stat-verts">0</span> verts &nbsp;|&nbsp;
+            <span id="stat-faces">0</span> faces &nbsp;|&nbsp;
+            <span id="stat-fps">60</span> FPS
+        </span>
+    </footer>
+
+    <!-- Dashboard Overlay -->
+    <div id="dashboard-overlay">
+        <div class="dash-container">
+            <!-- Header -->
+            <div class="dash-header">
+                <div class="dash-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>Engineering Dashboard</span>
+                    <span class="dash-subtitle">Brayton Cycle Analysis</span>
+                </div>
+                <div id="dash-status" class="dash-status ok">✓ Design within limits</div>
+                <button id="dash-close" class="dash-close-btn" title="Close (Esc)">✕</button>
+            </div>
+
+            <!-- KPI Row -->
+            <div class="kpi-row">
+                <div class="kpi-card"><div class="kpi-label">Thrust</div><div id="kpi-thrust" class="kpi-body"><span class="kpi-val">—</span><span class="kpi-unit">N</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">TSFC</div><div id="kpi-tsfc" class="kpi-body"><span class="kpi-val">—</span><span class="kpi-unit">g/kN·s</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">Thermal Eff.</div><div id="kpi-eff" class="kpi-body"><span class="kpi-val">—</span><span class="kpi-unit">%</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">Exhaust Vel.</div><div id="kpi-exhaust" class="kpi-body"><span class="kpi-val">—</span><span class="kpi-unit">m/s</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">Fuel Flow</div><div id="kpi-fuel" class="kpi-body"><span class="kpi-val">—</span><span class="kpi-unit">g/hr</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">Air/Fuel</div><div id="kpi-afr" class="kpi-body"><span class="kpi-val">—</span><span class="kpi-unit">:1</span></div></div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="dash-grid">
+                <!-- T-s Diagram -->
+                <div class="dash-card">
+                    <div class="dash-card-header">T-s Diagram <span class="dash-card-sub">Temperature vs Entropy</span></div>
+                    <div class="chart-wrap"><canvas id="chart-ts"></canvas></div>
+                </div>
+                <!-- Station Data -->
+                <div class="dash-card">
+                    <div class="dash-card-header">Station Analysis <span class="dash-card-sub">Temperature & Pressure</span></div>
+                    <div class="chart-wrap"><canvas id="chart-stations"></canvas></div>
+                </div>
+                <!-- Pareto Front -->
+                <div class="dash-card">
+                    <div class="dash-card-header">Design Space <span class="dash-card-sub">Thrust vs Mass (color = T/W)</span></div>
+                    <div class="chart-wrap"><canvas id="chart-pareto"></canvas></div>
+                    <div id="pareto-info" class="chart-info"></div>
+                </div>
+                <!-- Parameter Controls -->
+                <div class="dash-card params-card">
+                    <div class="dash-card-header">Design Parameters <span class="dash-card-sub">Adjust & see live results</span></div>
+                    <div class="params-grid">
+                        <div class="param-row">
+                            <label>Pressure Ratio</label>
+                            <input type="range" class="dash-slider" data-param="pr" min="2" max="6" step="0.1" value="3.5">
+                            <span id="val-pr" class="param-val">3.5</span>
+                        </div>
+                        <div class="param-row">
+                            <label>TIT (K)</label>
+                            <input type="range" class="dash-slider" data-param="tit" min="800" max="1300" step="10" value="1100">
+                            <span id="val-tit" class="param-val">1100</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Compressor η</label>
+                            <input type="range" class="dash-slider" data-param="eta_c" min="0.60" max="0.92" step="0.01" value="0.78">
+                            <span id="val-eta_c" class="param-val">0.78</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Turbine η</label>
+                            <input type="range" class="dash-slider" data-param="eta_t" min="0.65" max="0.92" step="0.01" value="0.82">
+                            <span id="val-eta_t" class="param-val">0.82</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Mass Flow (kg/s)</label>
+                            <input type="range" class="dash-slider" data-param="mdot" min="0.05" max="0.4" step="0.01" value="0.15">
+                            <span id="val-mdot" class="param-val">0.15</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Flight Mach</label>
+                            <input type="range" class="dash-slider" data-param="mach" min="0" max="0.8" step="0.05" value="0">
+                            <span id="val-mach" class="param-val">0</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Nozzle Exit (mm)</label>
+                            <input type="range" class="dash-slider" data-param="nozzle_exit_mm" min="35" max="80" step="1" value="55">
+                            <span id="val-nozzle_exit_mm" class="param-val">55</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Nozzle Length (mm)</label>
+                            <input type="range" class="dash-slider" data-param="nozzle_length_mm" min="30" max="90" step="1" value="50">
+                            <span id="val-nozzle_length_mm" class="param-val">50</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Combustor OD (mm)</label>
+                            <input type="range" class="dash-slider" data-param="combustor_outer_mm" min="90" max="140" step="1" value="110">
+                            <span id="val-combustor_outer_mm" class="param-val">110</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Combustor ID (mm)</label>
+                            <input type="range" class="dash-slider" data-param="combustor_inner_mm" min="45" max="100" step="1" value="60">
+                            <span id="val-combustor_inner_mm" class="param-val">60</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Combustor L (mm)</label>
+                            <input type="range" class="dash-slider" data-param="combustor_length_mm" min="50" max="130" step="1" value="80">
+                            <span id="val-combustor_length_mm" class="param-val">80</span>
+                        </div>
+                        <button id="btn-apply-model" class="btn-small dash-apply-btn">Apply to 3D Model</button>
+                        <button id="btn-save-variant" class="btn-small dash-apply-btn dash-secondary-btn">Save Variant Sample</button>
+                        <div class="param-row">
+                            <label>CFD Solver</label>
+                            <select id="cfd-solver" class="dash-select">
+                                <option value="openfoam">OpenFOAM</option>
+                                <option value="su2">SU2</option>
+                            </select>
+                            <span class="param-val"></span>
+                        </div>
+                        <button id="btn-run-cfd" class="btn-small dash-apply-btn dash-secondary-btn">Run CFD Calibration</button>
+                        <div class="param-row">
+                            <label>Use CFD labels</label>
+                            <input id="chk-use-cfd" type="checkbox" style="justify-self:start;">
+                            <span class="param-val"></span>
+                        </div>
+                        <button id="btn-train-ui" class="btn-small dash-apply-btn dash-secondary-btn">Train AI from UI Samples</button>
+                        <div class="param-row">
+                            <label>Target Thrust (N)</label>
+                            <input type="range" class="dash-slider" id="target-thrust" min="20" max="220" step="1" value="100">
+                            <span id="target-thrust-val" class="param-val">100</span>
+                        </div>
+                        <div class="param-row">
+                            <label>Target TSFC (g/kN·s)</label>
+                            <input type="range" class="dash-slider" id="target-tsfc" min="5" max="80" step="1" value="35">
+                            <span id="target-tsfc-val" class="param-val">35</span>
+                        </div>
+                        <button id="btn-inverse-design" class="btn-small dash-apply-btn dash-secondary-btn">Inverse Design Suggestion</button>
+                        <div id="inverse-status" class="chart-info">Set targets and run inverse design.</div>
+                        <div id="learning-status" class="chart-info">No UI samples yet.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js (local) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/static/js/node_modules/three/build/three.module.js",
+            "three/addons/": "/static/js/node_modules/three/examples/jsm/",
+            "chart.js": "/static/js/node_modules/chart.js/dist/chart.js",
+            "@kurkle/color": "/static/js/node_modules/@kurkle/color/dist/color.esm.js"
+        }
+    }
+    </script>
+    <script type="module" src="/static/js/viewer.js"></script>
+</body>
+</html>

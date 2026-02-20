@@ -1,0 +1,17 @@
+# NovaTurbo AI
+# Micro Turbojet Engine Design System
+# AI-powered computational engineering for VTOL drone engines
+
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+torch>=2.0.0
+PyYAML>=6.0
+trimesh>=3.21.0
+coolprop>=6.6.0
+cadquery>=2.3.0
+plotly>=5.14.0
+deap>=1.4.0
+pyDOE2>=1.3.0
+pandas>=2.0.0
+pyvista>=0.39.0

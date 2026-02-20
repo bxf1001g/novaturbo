@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# pytest
+.pytest_cache/
+
+# Data & models (large files — regenerate with app.py)
+data/generated/
+data/trained_models/*.pt
+data/user_learning/
+
+# Exports (regenerated)
+exports/stl/
+exports/step/
+
+# Node modules (installed via npm)
+ui/static/js/node_modules/
+
+# Copilot session state
+.copilot/
+
+# Logs
+*.log

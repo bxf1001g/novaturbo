@@ -1,0 +1,70 @@
+# NovaTurbo Default Micro Turbojet Engine Parameters
+# These define the baseline engine configuration
+
+engine:
+  name: "NovaTurbo-100"
+  type: "micro_turbojet"
+  target_thrust_N: 100          # ~10 kg thrust
+  max_diameter_mm: 120
+  max_length_mm: 300
+  target_weight_kg: 1.5
+
+ambient:
+  temperature_K: 288.15         # ISA sea level (15°C)
+  pressure_Pa: 101325           # 1 atm
+  gamma: 1.4                    # Ratio of specific heats for air
+  cp_air: 1005                  # J/(kg·K)
+  R_air: 287                    # J/(kg·K) gas constant
+
+inlet:
+  pressure_recovery: 0.98       # Total pressure recovery
+  diameter_mm: 80
+
+compressor:
+  type: "centrifugal"
+  pressure_ratio: 3.5           # Typical for micro turbojet
+  isentropic_efficiency: 0.78
+  impeller_diameter_mm: 80
+  blade_count: 12
+  inducer_blade_angle_deg: 30
+  exducer_blade_angle_deg: 60
+  tip_speed_m_s: 450
+  rpm: 100000
+
+combustor:
+  type: "annular"
+  outer_diameter_mm: 110
+  inner_diameter_mm: 60
+  length_mm: 80
+  liner_thickness_mm: 1.2
+  num_fuel_injectors: 6
+  num_dilution_holes: 12
+  num_cooling_holes: 24
+  air_fuel_ratio: 60            # Overall AFR
+  combustion_efficiency: 0.95
+  pressure_drop_fraction: 0.04  # 4% total pressure loss
+  max_temperature_K: 1100       # Turbine inlet temp
+
+turbine:
+  type: "axial"
+  stages: 1
+  blade_count: 17               # Prime number reduces vibration harmonics
+  chord_mm: 12
+  aspect_ratio: 1.5
+  tip_clearance_mm: 0.3
+  hub_tip_ratio: 0.7
+  isentropic_efficiency: 0.82
+  inlet_temperature_K: 1100
+
+nozzle:
+  type: "convergent"
+  exit_diameter_mm: 55
+  contraction_ratio: 1.2        # Inlet area / throat area
+  discharge_coefficient: 0.98
+
+fuel:
+  type: "Jet-A1"
+  lower_heating_value_MJ_kg: 43.0
+  density_kg_m3: 800
+  cp_gas: 1150                  # J/(kg·K) for combustion products
+  gamma_hot: 1.33               # Ratio of specific heats for hot gas

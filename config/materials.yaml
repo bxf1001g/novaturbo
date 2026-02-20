@@ -1,0 +1,88 @@
+# NovaTurbo Material Properties Database
+# Properties at room temperature unless noted
+# For high-temp applications, use the 'elevated' values
+
+materials:
+  inconel_718:
+    name: "Inconel 718"
+    category: "nickel_superalloy"
+    use: ["combustor", "turbine", "nozzle"]
+    density_kg_m3: 8190
+    melting_point_K: 1609
+    max_service_temp_K: 973         # 700°C continuous
+    max_short_term_temp_K: 1253     # 980°C short-term
+    yield_strength_MPa: 1034
+    ultimate_strength_MPa: 1241
+    thermal_conductivity_W_mK: 11.4
+    specific_heat_J_kgK: 435
+    thermal_expansion_1e6_K: 13.0
+    youngs_modulus_GPa: 200
+    printable_dmls: true
+    min_wall_thickness_mm: 0.4
+    cost_per_kg_usd: 45
+
+  inconel_625:
+    name: "Inconel 625"
+    category: "nickel_superalloy"
+    use: ["combustor", "turbine"]
+    density_kg_m3: 8440
+    melting_point_K: 1623
+    max_service_temp_K: 1253        # 980°C continuous
+    max_short_term_temp_K: 1373
+    yield_strength_MPa: 758
+    ultimate_strength_MPa: 965
+    thermal_conductivity_W_mK: 9.8
+    specific_heat_J_kgK: 410
+    thermal_expansion_1e6_K: 12.8
+    youngs_modulus_GPa: 206
+    printable_dmls: true
+    min_wall_thickness_mm: 0.4
+    cost_per_kg_usd: 55
+
+  ti6al4v:
+    name: "Ti-6Al-4V"
+    category: "titanium_alloy"
+    use: ["compressor", "inlet"]
+    density_kg_m3: 4430
+    melting_point_K: 1933
+    max_service_temp_K: 673         # 400°C
+    max_short_term_temp_K: 773
+    yield_strength_MPa: 880
+    ultimate_strength_MPa: 950
+    thermal_conductivity_W_mK: 6.7
+    specific_heat_J_kgK: 526
+    thermal_expansion_1e6_K: 8.6
+    youngs_modulus_GPa: 114
+    printable_dmls: true
+    min_wall_thickness_mm: 0.3
+    cost_per_kg_usd: 120
+
+  ss316l:
+    name: "Stainless Steel 316L"
+    category: "stainless_steel"
+    use: ["housing", "shaft", "bearings_housing"]
+    density_kg_m3: 7990
+    melting_point_K: 1673
+    max_service_temp_K: 1143        # 870°C
+    max_short_term_temp_K: 1223
+    yield_strength_MPa: 205
+    ultimate_strength_MPa: 515
+    thermal_conductivity_W_mK: 16.3
+    specific_heat_J_kgK: 500
+    thermal_expansion_1e6_K: 16.0
+    youngs_modulus_GPa: 193
+    printable_dmls: true
+    min_wall_thickness_mm: 0.3
+    cost_per_kg_usd: 8
+
+  alumina_tbc:
+    name: "Alumina Thermal Barrier Coating"
+    category: "ceramic"
+    use: ["combustor_coating", "turbine_coating"]
+    density_kg_m3: 3950
+    melting_point_K: 2345
+    max_service_temp_K: 1573
+    thermal_conductivity_W_mK: 1.5
+    specific_heat_J_kgK: 880
+    coating_thickness_mm: 0.2
+    temperature_reduction_K: 200    # Temp drop across TBC
