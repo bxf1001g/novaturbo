@@ -146,7 +146,7 @@ def print_engine_summary(asm: EngineAssembly, params: EngineAssemblyParams):
     print(f"\n  Mass Breakdown:")
     for comp, mass in asm.mass_breakdown.items():
         pct = mass / asm.total_mass_kg * 100
-        bar = '█' * int(pct / 3)
+        bar = '#' * int(pct / 3)
         print(f"    {comp:15s} {mass*1000:7.1f} g  ({pct:5.1f}%) {bar}")
 
     print(f"\n  Key Operating Parameters:")

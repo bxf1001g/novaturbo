@@ -226,12 +226,48 @@ def generate_combustor_lattice(combustor_params=None,
     return np.vstack(all_verts), np.vstack(all_faces)
 
 
+def _clip_to_conical_envelope(verts: np.ndarray, faces: np.ndarray,
+                               z_start: float, z_end: float,
+                               r_inner_start: float, r_inner_end: float,
+                               r_outer_start: float, r_outer_end: float
+                               ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Clip mesh to a conical (tapered) envelope.
+    Removes faces where any vertex falls outside the linearly-interpolated
+    inner/outer radius at that vertex's axial (z) position.
+    """
+    if len(verts) == 0 or len(faces) == 0:
+        return verts, faces
+
+    import trimesh as _trimesh
+
+    r = np.sqrt(verts[:, 0]**2 + verts[:, 1]**2)
+    z = verts[:, 2]
+    t = np.clip((z - z_start) / (z_end - z_start), 0.0, 1.0)
+
+    r_inner_local = r_inner_start + (r_inner_end - r_inner_start) * t
+    r_outer_local = r_outer_start + (r_outer_end - r_outer_start) * t
+
+    inside = (r >= r_inner_local) & (r <= r_outer_local)
+    face_inside = inside[faces].all(axis=1)
+    clipped_faces = faces[face_inside]
+
+    if len(clipped_faces) == 0:
+        return np.array([]).reshape(0, 3), np.array([]).reshape(0, 3)
+
+    mesh = _trimesh.Trimesh(vertices=verts, faces=clipped_faces)
+    mesh.remove_unreferenced_vertices()
+
+    return np.array(mesh.vertices), np.array(mesh.faces)
+
+
 def generate_nozzle_lattice(nozzle_params=None,
                              z_offset: float = 0.0,
                              lattice_params: LatticeParams = None) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate TPMS lattice for nozzle walls.
     Lighter lattice since thermal loads are lower here.
+    The lattice follows the converging nozzle taper via conical clipping.
     """
     if nozzle_params is None:
         from .nozzle import NozzleParams
@@ -247,26 +283,41 @@ def generate_nozzle_lattice(nozzle_params=None,
             grade_axially=False,
         )
 
-    # Nozzle is a converging cone — lattice fills the wall thickness
     r_inlet = nozzle_params.inlet_diameter_mm / 2.0
     r_exit = nozzle_params.exit_diameter_mm / 2.0
     wall_t = nozzle_params.wall_thickness_mm if hasattr(nozzle_params, 'wall_thickness_mm') else 2.0
-    # Use average radius, lattice fills inside the wall
-    avg_r = (r_inlet + r_exit) / 2.0
+    band = wall_t * 2  # lattice fill band around nozzle wall
 
+    # Generate in a cylinder covering the full taper range
     region = AnnularRegion(
         z_start_mm=z_offset,
         z_end_mm=z_offset + nozzle_params.length_mm,
-        r_inner_mm=avg_r - wall_t * 2,
-        r_outer_mm=avg_r + wall_t * 2,
+        r_inner_mm=r_exit - band,
+        r_outer_mm=r_inlet + band,
         inner_wall_mm=0.3,
         outer_wall_mm=0.3,
     )
 
     try:
-        return generate_annular_lattice(region, lattice_params)
+        verts, faces = generate_annular_lattice(region, lattice_params)
     except ValueError:
         return np.array([]).reshape(0, 3), np.array([]).reshape(0, 3)
+
+    if len(verts) == 0:
+        return verts, faces
+
+    # Clip to the converging nozzle cone so lattice follows the taper
+    verts, faces = _clip_to_conical_envelope(
+        verts, faces,
+        z_start=z_offset,
+        z_end=z_offset + nozzle_params.length_mm,
+        r_inner_start=r_inlet - band,
+        r_inner_end=r_exit - band,
+        r_outer_start=r_inlet + band,
+        r_outer_end=r_exit + band,
+    )
+
+    return verts, faces
 
 
 def get_lattice_stats(verts: np.ndarray, faces: np.ndarray,
