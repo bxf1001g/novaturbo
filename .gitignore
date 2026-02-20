@@ -35,6 +35,7 @@ data/user_learning/
 # Exports (regenerated)
 exports/stl/
 exports/step/
+exports/cfd_case/
 
 # Node modules (installed via npm)
 ui/static/js/node_modules/

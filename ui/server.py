@@ -910,6 +910,41 @@ def serve_stl(filename):
     return send_from_directory(STL_DIR, filename)
 
 
+# ---- CFD Case Generation endpoint -----------------------------------------
+
+@app.route('/api/cfd/generate-case', methods=['POST'])
+def generate_cfd_case():
+    """Generate OpenFOAM case directory from current engine geometry."""
+    try:
+        from src.cfd.case_generator import generate_openfoam_case, CFDCaseConfig
+
+        data = request.get_json(force=True, silent=True) or {}
+        config = CFDCaseConfig(
+            base_cell_size_mm=float(data.get('base_cell_size_mm', 4.0)),
+            refinement_levels=int(data.get('refinement_levels', 3)),
+            boundary_layers=int(data.get('boundary_layers', 3)),
+            first_layer_mm=float(data.get('first_layer_mm', 0.1)),
+            inlet_mass_flow_kg_s=float(data.get('inlet_mass_flow_kg_s', 0.28)),
+            inlet_temperature_K=float(data.get('inlet_temperature_K', 288.15)),
+            outlet_pressure_Pa=float(data.get('outlet_pressure_Pa', 101325)),
+            n_procs=int(data.get('n_procs', 4)),
+        )
+
+        case_dir = os.path.join("exports", "cfd_case")
+        result = generate_openfoam_case(case_dir, STL_DIR, config, verbose=False)
+
+        return jsonify({
+            'status': 'ok',
+            'case_dir': result['case_dir'],
+            'stl_files': result['stl_files'],
+            'domain': result['domain'],
+            'message': f"OpenFOAM case generated with {len(result['stl_files'])} STL surfaces. "
+                       f"Run: cd {result['case_dir']} && ./Allrun",
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("\n  NovaTurbo 3D Viewer")
     print(f"  STL directory: {STL_DIR}")
