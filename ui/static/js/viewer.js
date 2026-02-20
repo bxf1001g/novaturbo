@@ -418,6 +418,11 @@ function toggleSection() {
         c.mesh.material.clippingPlanes = planes;
         c.mesh.material.needsUpdate = true;
     });
+    // Apply clipping to lattice meshes too
+    Object.values(state.latticeMeshes).forEach(m => {
+        m.material.clippingPlanes = planes;
+        m.material.needsUpdate = true;
+    });
 }
 
 function toggleExplode() {
