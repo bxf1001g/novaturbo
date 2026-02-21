@@ -241,7 +241,7 @@ def export_combustor_stl(comb_geo, params, z_offset: float = 0.0,
 
 def export_turbine_stl(turb_geo, params, z_offset: float = 0.0,
                        n_theta: int = 72) -> 'trimesh.Trimesh':
-    """Generate STL mesh for the turbine stage."""
+    """Generate STL mesh for the turbine stage (hub + casing + NGV + rotor blades)."""
     z = turb_geo.hub_contour[:, 0] + z_offset
     r_hub = turb_geo.hub_contour[:, 1]
     r_casing = turb_geo.casing_contour[:, 1]
@@ -255,7 +255,65 @@ def export_turbine_stl(turb_geo, params, z_offset: float = 0.0,
         params.hub_diameter_mm / 2.0, n_theta
     )
 
-    return trimesh.util.concatenate([shell, disc])
+    parts = [shell, disc]
+
+    # NGV stator vanes
+    r_hub_val = params.hub_diameter_mm / 2.0
+    r_tip_val = params.tip_diameter_mm / 2.0
+    blade_h = r_tip_val - r_hub_val
+    ht_ngv = (params.ngv_thickness_ratio * params.ngv_chord_mm) / 2.0
+
+    for i in range(params.ngv_count):
+        theta = 2 * np.pi * i / params.ngv_count
+        z_le = z_offset + params.ngv_axial_position_mm
+        z_te = z_le + params.ngv_chord_mm
+        r_in = r_hub_val
+        r_out = r_tip_val - 0.5
+
+        verts = np.array([
+            [r_in * np.cos(theta - ht_ngv/r_in),  r_in * np.sin(theta - ht_ngv/r_in),  z_le],
+            [r_in * np.cos(theta + ht_ngv/r_in),  r_in * np.sin(theta + ht_ngv/r_in),  z_le],
+            [r_out * np.cos(theta + ht_ngv/r_out), r_out * np.sin(theta + ht_ngv/r_out), z_le],
+            [r_out * np.cos(theta - ht_ngv/r_out), r_out * np.sin(theta - ht_ngv/r_out), z_le],
+            [r_in * np.cos(theta - ht_ngv/r_in),  r_in * np.sin(theta - ht_ngv/r_in),  z_te],
+            [r_in * np.cos(theta + ht_ngv/r_in),  r_in * np.sin(theta + ht_ngv/r_in),  z_te],
+            [r_out * np.cos(theta + ht_ngv/r_out), r_out * np.sin(theta + ht_ngv/r_out), z_te],
+            [r_out * np.cos(theta - ht_ngv/r_out), r_out * np.sin(theta - ht_ngv/r_out), z_te],
+        ])
+        faces = np.array([
+            [0,1,2],[0,2,3],[4,6,5],[4,7,6],
+            [0,4,5],[0,5,1],[2,6,7],[2,7,3],
+            [0,3,7],[0,7,4],[1,5,6],[1,6,2]
+        ])
+        parts.append(trimesh.Trimesh(vertices=verts, faces=faces))
+
+    # Rotor blades
+    ht_rot = (params.blade_thickness_ratio * params.blade_chord_mm) / 2.0
+    for i in range(params.blade_count):
+        theta = 2 * np.pi * i / params.blade_count
+        z_le = z_offset + params.blade_axial_position_mm
+        z_te = z_le + params.blade_chord_mm
+        r_in = r_hub_val
+        r_out = r_tip_val - 0.5
+
+        verts = np.array([
+            [r_in * np.cos(theta - ht_rot/r_in),  r_in * np.sin(theta - ht_rot/r_in),  z_le],
+            [r_in * np.cos(theta + ht_rot/r_in),  r_in * np.sin(theta + ht_rot/r_in),  z_le],
+            [r_out * np.cos(theta + ht_rot/r_out), r_out * np.sin(theta + ht_rot/r_out), z_le],
+            [r_out * np.cos(theta - ht_rot/r_out), r_out * np.sin(theta - ht_rot/r_out), z_le],
+            [r_in * np.cos(theta - ht_rot/r_in),  r_in * np.sin(theta - ht_rot/r_in),  z_te],
+            [r_in * np.cos(theta + ht_rot/r_in),  r_in * np.sin(theta + ht_rot/r_in),  z_te],
+            [r_out * np.cos(theta + ht_rot/r_out), r_out * np.sin(theta + ht_rot/r_out), z_te],
+            [r_out * np.cos(theta - ht_rot/r_out), r_out * np.sin(theta - ht_rot/r_out), z_te],
+        ])
+        faces = np.array([
+            [0,1,2],[0,2,3],[4,6,5],[4,7,6],
+            [0,4,5],[0,5,1],[2,6,7],[2,7,3],
+            [0,3,7],[0,7,4],[1,5,6],[1,6,2]
+        ])
+        parts.append(trimesh.Trimesh(vertices=verts, faces=faces))
+
+    return trimesh.util.concatenate(parts)
 
 
 def export_nozzle_stl(noz_geo, params, z_offset: float = 0.0,
