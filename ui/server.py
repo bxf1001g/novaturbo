@@ -834,6 +834,34 @@ def inverse_design():
     })
 
 
+@app.route('/api/validation')
+def run_validation():
+    """Run Brayton cycle validation against published engine data."""
+    from src.physics.validation import run_full_validation
+    summary = run_full_validation()
+    return jsonify(summary)
+
+
+@app.route('/api/blade_analysis', methods=['GET', 'POST'])
+def blade_analysis():
+    """Run blade profile aerodynamic analysis."""
+    from src.physics.blade_analysis import full_blade_analysis
+
+    if request.method == 'POST':
+        p = request.get_json(silent=True) or {}
+    else:
+        p = {}
+
+    data = full_blade_analysis(
+        rpm=float(p.get('rpm', 100000)),
+        C_axial_compressor=float(p.get('C_axial_compressor', 150.0)),
+        C_axial_turbine=float(p.get('C_axial_turbine', 200.0)),
+        compressor_r_mean_mm=float(p.get('compressor_r_mean_mm', 40.0)),
+        turbine_r_mean_mm=float(p.get('turbine_r_mean_mm', 36.25)),
+    )
+    return jsonify(data)
+
+
 @app.route('/api/lattice/info')
 def get_lattice_info():
     """Return lattice structure metadata including available variations."""

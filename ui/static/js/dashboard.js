@@ -246,6 +246,8 @@ function initCharts() {
     document.getElementById('btn-inverse-design').addEventListener('click', runInverseDesign);
     document.getElementById('target-thrust').addEventListener('input', onTargetChange);
     document.getElementById('target-tsfc').addEventListener('input', onTargetChange);
+    document.getElementById('btn-run-validation')?.addEventListener('click', runValidation);
+    document.getElementById('btn-run-blade')?.addEventListener('click', runBladeAnalysis);
     onTargetChange();
     // ESC key
     document.addEventListener('keydown', e => {
@@ -612,5 +614,148 @@ async function applyModelChanges() {
         }
         btn.disabled = false;
         btn.textContent = prevText;
+    }
+}
+
+// ─── Brayton Validation ───
+let bladeCpChart = null;
+
+async function runValidation() {
+    const btn = document.getElementById('btn-run-validation');
+    const out = document.getElementById('validation-results');
+    if (!btn || !out) return;
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    out.textContent = 'Validating against published engine data...';
+    try {
+        const resp = await fetch('/api/validation');
+        const data = await resp.json();
+        let txt = `Grade: ${data.grade}  |  Engines: ${data.valid_count}/${data.engine_count}\n`;
+        txt += `Avg Thrust Error: ${data.avg_thrust_error_pct}%  |  Avg TSFC Error: ${data.avg_tsfc_error_pct}%\n`;
+        txt += '─'.repeat(60) + '\n';
+        for (const eng of data.engines) {
+            const st = eng.valid ? '✓' : '✗';
+            txt += `\n[${st}] ${eng.name} (${eng.source})\n`;
+            txt += `  Thrust:  ${eng.predicted.thrust_N} N  vs  ${eng.published.thrust_N} N  (${eng.errors.thrust_pct > 0 ? '+' : ''}${eng.errors.thrust_pct}%)\n`;
+            txt += `  EGT:     ${eng.predicted.exhaust_temp_K} K  vs  ${eng.published.exhaust_temp_K} K  (${eng.errors.exhaust_temp_pct > 0 ? '+' : ''}${eng.errors.exhaust_temp_pct}%)\n`;
+            txt += `  TSFC:    ${eng.predicted.tsfc_kg_kgf_h} kg/kgf·h  vs  ${eng.published.tsfc_kg_kgf_h} kg/kgf·h  (${eng.errors.tsfc_pct > 0 ? '+' : ''}${eng.errors.tsfc_pct}%)\n`;
+            for (const n of eng.notes) txt += `  ⚠ ${n}\n`;
+        }
+        out.textContent = txt;
+        setDashStatus(`Validation: Grade ${data.grade}`, data.grade === 'A' || data.grade === 'B' ? 'ok' : 'warn');
+    } catch (err) {
+        out.textContent = 'Error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Brayton Validation';
+    }
+}
+
+// ─── Blade Profile Analysis ───
+async function runBladeAnalysis() {
+    const btn = document.getElementById('btn-run-blade');
+    const metricsEl = document.getElementById('blade-metrics');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+    try {
+        const resp = await fetch('/api/blade_analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rpm: 100000 }),
+        });
+        const data = await resp.json();
+        const c = data.compressor;
+        const t = data.turbine;
+
+        // Metrics text
+        if (metricsEl) {
+            let txt = '── COMPRESSOR ──\n';
+            txt += `Diffusion Factor:   ${c.metrics.diffusion_factor}\n`;
+            txt += `De Haller Number:   ${c.metrics.de_haller_number}\n`;
+            txt += `Work Coefficient:   ${c.metrics.work_coefficient}\n`;
+            txt += `Flow Coefficient:   ${c.metrics.flow_coefficient}\n`;
+            txt += `Reaction:           ${c.metrics.degree_of_reaction}\n`;
+            txt += `Efficiency:         ${(c.efficiency_estimate * 100).toFixed(1)}%\n`;
+            txt += `Stall Risk:         ${c.stall_risk}\n`;
+            txt += `Loss (total):       ${c.losses.total}\n`;
+            for (const n of c.notes) txt += `⚠ ${n}\n`;
+            txt += '\n── TURBINE ──\n';
+            txt += `Zweifel Coeff:      ${t.metrics.zweifel_coefficient}\n`;
+            txt += `Work Coefficient:   ${t.metrics.work_coefficient}\n`;
+            txt += `Flow Coefficient:   ${t.metrics.flow_coefficient}\n`;
+            txt += `Reaction:           ${t.metrics.degree_of_reaction}\n`;
+            txt += `Efficiency:         ${(t.efficiency_estimate * 100).toFixed(1)}%\n`;
+            txt += `Loss (total):       ${t.losses.total}\n`;
+            for (const n of t.notes) txt += `⚠ ${n}\n`;
+            metricsEl.textContent = txt;
+        }
+
+        // Blade Cp chart
+        const canvas = document.getElementById('blade-cp-chart');
+        if (canvas) {
+            if (bladeCpChart) bladeCpChart.destroy();
+            bladeCpChart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: c.pressure_distribution.chord.map(v => v.toFixed(2)),
+                    datasets: [
+                        {
+                            label: 'Comp. Suction',
+                            data: c.pressure_distribution.Cp_suction,
+                            borderColor: C.accent,
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.3,
+                        },
+                        {
+                            label: 'Comp. Pressure',
+                            data: c.pressure_distribution.Cp_pressure,
+                            borderColor: C.danger,
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.3,
+                        },
+                        {
+                            label: 'Turb. Suction',
+                            data: t.pressure_distribution.Cp_suction,
+                            borderColor: C.success,
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            borderDash: [4, 3],
+                            tension: 0.3,
+                        },
+                        {
+                            label: 'Turb. Pressure',
+                            data: t.pressure_distribution.Cp_pressure,
+                            borderColor: C.warning,
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            borderDash: [4, 3],
+                            tension: 0.3,
+                        },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Chord Fraction', color: C.gridLabel }, ticks: { color: C.gridLabel, maxTicksLimit: 6 }, grid: { color: C.grid } },
+                        y: { title: { display: true, text: 'Cp', color: C.gridLabel }, ticks: { color: C.gridLabel }, grid: { color: C.grid }, reverse: true },
+                    },
+                    plugins: {
+                        legend: { labels: { color: C.text, boxWidth: 12 } },
+                        title: { display: true, text: 'Blade Surface Pressure (Cp)', color: C.text },
+                    }
+                }
+            });
+        }
+        setDashStatus('✓ Blade analysis complete', 'ok');
+    } catch (err) {
+        if (metricsEl) metricsEl.textContent = 'Error: ' + err.message;
+        setDashStatus('⚠ ' + err.message, 'warn');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Blade Profile Analysis';
     }
 }

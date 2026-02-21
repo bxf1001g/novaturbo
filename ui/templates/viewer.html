@@ -257,6 +257,19 @@
                         <div id="learning-status" class="chart-info">No UI samples yet.</div>
                     </div>
                 </div>
+                <!-- Validation & Blade Analysis Panel -->
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <div class="chart-title">🔬 Validation & Blade Analysis</div>
+                    <div class="chart-content" style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <button id="btn-run-validation" class="btn-small dash-apply-btn">Run Brayton Validation</button>
+                        <button id="btn-run-blade" class="btn-small dash-apply-btn dash-secondary-btn">Blade Profile Analysis</button>
+                    </div>
+                    <div id="validation-results" class="chart-info" style="margin-top:8px;font-size:12px;white-space:pre-wrap;max-height:320px;overflow-y:auto;"></div>
+                    <div style="display:flex; gap:12px; margin-top:8px;">
+                        <canvas id="blade-cp-chart" width="400" height="200" style="max-width:50%;"></canvas>
+                        <div id="blade-metrics" class="chart-info" style="flex:1;font-size:12px;white-space:pre-wrap;"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
