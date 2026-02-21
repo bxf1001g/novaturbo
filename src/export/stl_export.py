@@ -156,6 +156,203 @@ def _create_cylinder(z_start: float, z_end: float, radius: float,
     return trimesh.util.concatenate([shell] + caps)
 
 
+def _create_lofted_blade(profiles_3d, close_tip=True):
+    """
+    Create a lofted blade mesh from multiple span-wise profile sections.
+    Each profile in profiles_3d is an Nx3 array of points forming a closed
+    airfoil loop (suction side forward + pressure side reversed).
+    Adjacent profiles are connected by triangle strips to form the blade surface.
+    """
+    all_verts = []
+    all_faces = []
+    offset = 0
+
+    for i in range(len(profiles_3d) - 1):
+        p0 = profiles_3d[i]
+        p1 = profiles_3d[i + 1]
+        n = len(p0)
+
+        # Ensure both profiles have same point count
+        if len(p1) != n:
+            t = np.linspace(0, 1, n)
+            t_orig = np.linspace(0, 1, len(p1))
+            p1 = np.column_stack([
+                np.interp(t, t_orig, p1[:, 0]),
+                np.interp(t, t_orig, p1[:, 1]),
+                np.interp(t, t_orig, p1[:, 2]),
+            ])
+
+        verts = np.vstack([p0, p1])
+        faces = []
+        for j in range(n):
+            j_next = (j + 1) % n
+            # Two triangles per quad
+            faces.append([j, j_next, n + j])
+            faces.append([j_next, n + j_next, n + j])
+
+        all_verts.append(verts)
+        all_faces.append(np.array(faces) + offset)
+        offset += len(verts)
+
+    # End caps (hub and tip)
+    for profile in [profiles_3d[0], profiles_3d[-1]]:
+        n = len(profile)
+        center = profile.mean(axis=0)
+        verts = np.vstack([profile, center.reshape(1, 3)])
+        faces = []
+        for j in range(n):
+            j_next = (j + 1) % n
+            faces.append([j, j_next, n])
+        all_verts.append(verts)
+        all_faces.append(np.array(faces) + offset)
+        offset += len(verts)
+
+    verts_combined = np.vstack(all_verts)
+    faces_combined = np.vstack(all_faces)
+    mesh = trimesh.Trimesh(vertices=verts_combined, faces=faces_combined)
+    mesh.fix_normals()
+    return mesh
+
+
+def _build_axial_blade_profiles_3d(profiles, blade_count, axial_offset,
+                                    r_hub, r_tip, n_span=8, n_profile_pts=40):
+    """
+    Build 3D airfoil profiles for axial turbine/compressor blades.
+    Interpolates between hub/mid/tip profiles to create n_span sections,
+    then wraps the 2D airfoil onto the cylindrical surface.
+    Returns list of blade meshes.
+    """
+    # Extract profile data at hub (0), mid (0.5), tip (1.0)
+    blade_h = r_tip - r_hub
+    span_fracs = np.array([p['span'] for p in profiles])
+    blades = []
+
+    for i_blade in range(blade_count):
+        theta_offset = 2 * np.pi * i_blade / blade_count
+        sections_3d = []
+
+        for span in np.linspace(0, 1, n_span):
+            r = r_hub + span * blade_h
+
+            # Interpolate profile from available span sections
+            # Find bracketing profiles
+            idx_lo = np.searchsorted(span_fracs, span, side='right') - 1
+            idx_lo = max(0, min(idx_lo, len(profiles) - 2))
+            idx_hi = idx_lo + 1
+            if idx_hi >= len(profiles):
+                idx_hi = idx_lo
+
+            s_lo = span_fracs[idx_lo]
+            s_hi = span_fracs[idx_hi]
+            if abs(s_hi - s_lo) < 1e-10:
+                t = 0.0
+            else:
+                t = (span - s_lo) / (s_hi - s_lo)
+
+            p_lo = profiles[idx_lo]
+            p_hi = profiles[idx_hi]
+
+            # Interpolate suction and pressure surfaces
+            n_pts = len(p_lo['suction_x'])
+            sx = (1 - t) * p_lo['suction_x'] + t * p_hi['suction_x']
+            sy = (1 - t) * p_lo['suction_y'] + t * p_hi['suction_y']
+            px = (1 - t) * p_lo['pressure_x'] + t * p_hi['pressure_x']
+            py = (1 - t) * p_lo['pressure_y'] + t * p_hi['pressure_y']
+
+            # Build closed airfoil loop: suction forward + pressure reversed
+            loop_x = np.concatenate([sx, px[::-1]])
+            loop_y = np.concatenate([sy, py[::-1]])
+
+            # Wrap onto cylindrical surface at radius r
+            theta_local = theta_offset + loop_y / r
+            z_local = axial_offset + loop_x
+
+            pts_3d = np.column_stack([
+                r * np.cos(theta_local),
+                r * np.sin(theta_local),
+                z_local
+            ])
+            sections_3d.append(pts_3d)
+
+        blade_mesh = _create_lofted_blade(sections_3d)
+        blades.append(blade_mesh)
+
+    return blades
+
+
+def _build_centrifugal_blade_mesh(blade_profiles, blade_count, z_offset,
+                                   r_hub_array, r_shroud_array, z_array,
+                                   blade_thickness_mm, axial_length_mm,
+                                   n_span=8, n_chord=20):
+    """
+    Build curved centrifugal compressor impeller blades.
+    Uses camberline + thickness to create proper 3D airfoil shapes.
+    """
+    blades = []
+    span_fracs = np.array([p['span'] for p in blade_profiles])
+
+    for i_blade in range(blade_count):
+        theta_base = 2 * np.pi * i_blade / blade_count
+        sections_3d = []
+
+        for span in np.linspace(0.05, 0.95, n_span):
+            # Interpolate blade profile
+            idx_lo = np.searchsorted(span_fracs, span, side='right') - 1
+            idx_lo = max(0, min(idx_lo, len(blade_profiles) - 2))
+            idx_hi = min(idx_lo + 1, len(blade_profiles) - 1)
+
+            s_lo = span_fracs[idx_lo]
+            s_hi = span_fracs[idx_hi]
+            if abs(s_hi - s_lo) < 1e-10:
+                t = 0.0
+            else:
+                t = (span - s_lo) / (s_hi - s_lo)
+
+            p_lo = blade_profiles[idx_lo]
+            p_hi = blade_profiles[idx_hi]
+
+            # Interpolate r and theta along camberline
+            n_pts = len(p_lo['r'])
+            r_cam = (1 - t) * p_lo['r'] + t * p_hi['r']
+            theta_cam = (1 - t) * p_lo['theta'] + t * p_hi['theta']
+            z_cam = np.linspace(0, axial_length_mm, n_pts) + z_offset
+
+            # Add thickness perpendicular to camberline
+            ht = blade_thickness_mm / 2.0
+            dtheta = np.gradient(theta_cam)
+            dr = np.gradient(r_cam)
+            norm = np.sqrt(dtheta**2 * r_cam**2 + dr**2) + 1e-10
+
+            # Normal in cylindrical coords (perpendicular to camberline)
+            n_theta = -dr / norm
+            n_r = (dtheta * r_cam) / norm
+
+            # Suction and pressure surfaces
+            r_s = r_cam + ht * n_r
+            theta_s = theta_cam + theta_base + ht * n_theta / r_cam
+            r_p = r_cam - ht * n_r
+            theta_p = theta_cam + theta_base - ht * n_theta / r_cam
+
+            # Build closed loop
+            x_s = r_s * np.cos(theta_s)
+            y_s = r_s * np.sin(theta_s)
+            x_p = r_p * np.cos(theta_p)
+            y_p = r_p * np.sin(theta_p)
+
+            loop_x = np.concatenate([x_s, x_p[::-1]])
+            loop_y = np.concatenate([y_s, y_p[::-1]])
+            loop_z = np.concatenate([z_cam, z_cam[::-1]])
+
+            pts_3d = np.column_stack([loop_x, loop_y, loop_z])
+            sections_3d.append(pts_3d)
+
+        if len(sections_3d) >= 2:
+            blade_mesh = _create_lofted_blade(sections_3d)
+            blades.append(blade_mesh)
+
+    return blades
+
+
 def export_inlet_stl(inlet_geo, params, z_offset: float = 0.0,
                      n_theta: int = 72) -> 'trimesh.Trimesh':
     """Generate STL mesh for the air inlet."""
@@ -167,17 +364,12 @@ def export_inlet_stl(inlet_geo, params, z_offset: float = 0.0,
 
 def export_compressor_stl(comp_geo, params, z_offset: float = 0.0,
                           n_theta: int = 72) -> 'trimesh.Trimesh':
-    """Generate STL mesh for the compressor (hub + shroud shell)."""
-    # Hub body (solid of revolution)
+    """Generate STL mesh for the compressor (hub + shroud shell + curved impeller blades)."""
     z_hub = comp_geo.hub_contour[:, 0] + z_offset
     r_hub = comp_geo.hub_contour[:, 1]
-
-    # Shroud
     z_shroud = comp_geo.shroud_contour[:, 0] + z_offset
     r_shroud = comp_geo.shroud_contour[:, 1]
 
-    # Create shell between shroud (outer) and hub (inner)
-    # Interpolate to same Z points
     n_pts = 50
     z_common = np.linspace(z_offset, z_offset + params.axial_length_mm, n_pts)
     r_hub_interp = np.interp(z_common, z_hub, r_hub)
@@ -185,41 +377,36 @@ def export_compressor_stl(comp_geo, params, z_offset: float = 0.0,
 
     shell = _create_shell(z_common, r_shroud_interp, z_common, r_hub_interp, n_theta)
 
-    # Add simplified blade geometry (thin radial fins)
-    blades = []
-    for i in range(params.blade_count):
-        theta = 2 * np.pi * i / params.blade_count
-        blade_thickness = params.blade_thickness_mm
+    # Build proper curved impeller blades
+    blade_meshes = _build_centrifugal_blade_mesh(
+        comp_geo.blade_profiles, params.blade_count, z_offset,
+        r_hub_interp, r_shroud_interp, z_common,
+        params.blade_thickness_mm, params.axial_length_mm
+    )
 
-        for z_idx in range(0, n_pts - 1, 3):
-            r_in = r_hub_interp[z_idx]
-            r_out = r_shroud_interp[z_idx] - params.shroud_clearance_mm
-            z1 = z_common[z_idx]
-            z2 = z_common[min(z_idx + 3, n_pts - 1)]
-            ht = blade_thickness / 2000.0  # Half-thickness in mm for offset
+    # Splitter blades (second half of camberline, offset by half blade pitch)
+    if params.splitter_blade_count > 0 and comp_geo.blade_profiles:
+        splitter_profiles = []
+        for p in comp_geo.blade_profiles:
+            n = len(p['r'])
+            half = n // 2
+            splitter_profiles.append({
+                'span': p['span'],
+                'r': p['r'][half:],
+                'theta': p['theta'][half:] - p['theta'][half],
+                'x': p['x'][half:],
+                'y': p['y'][half:],
+                'beta': p['beta'][half:]
+            })
+        splitter_meshes = _build_centrifugal_blade_mesh(
+            splitter_profiles, params.splitter_blade_count,
+            z_offset + params.axial_length_mm * 0.5,
+            r_hub_interp[n_pts//2:], r_shroud_interp[n_pts//2:], z_common[n_pts//2:],
+            params.blade_thickness_mm * 0.8, params.axial_length_mm * 0.5
+        )
+        blade_meshes.extend(splitter_meshes)
 
-            # Blade as a thin box
-            verts = np.array([
-                [r_in * np.cos(theta - ht/r_in), r_in * np.sin(theta - ht/r_in), z1],
-                [r_in * np.cos(theta + ht/r_in), r_in * np.sin(theta + ht/r_in), z1],
-                [r_out * np.cos(theta + ht/r_out), r_out * np.sin(theta + ht/r_out), z1],
-                [r_out * np.cos(theta - ht/r_out), r_out * np.sin(theta - ht/r_out), z1],
-                [r_in * np.cos(theta - ht/r_in), r_in * np.sin(theta - ht/r_in), z2],
-                [r_in * np.cos(theta + ht/r_in), r_in * np.sin(theta + ht/r_in), z2],
-                [r_out * np.cos(theta + ht/r_out), r_out * np.sin(theta + ht/r_out), z2],
-                [r_out * np.cos(theta - ht/r_out), r_out * np.sin(theta - ht/r_out), z2],
-            ])
-            box_faces = np.array([
-                [0,1,2],[0,2,3],[4,6,5],[4,7,6],
-                [0,4,5],[0,5,1],[2,6,7],[2,7,3],
-                [0,3,7],[0,7,4],[1,5,6],[1,6,2]
-            ])
-            blades.append(trimesh.Trimesh(vertices=verts, faces=box_faces))
-
-    if blades:
-        all_parts = [shell] + blades
-        return trimesh.util.concatenate(all_parts)
-    return shell
+    return trimesh.util.concatenate([shell] + blade_meshes)
 
 
 def export_combustor_stl(comb_geo, params, z_offset: float = 0.0,
@@ -241,7 +428,7 @@ def export_combustor_stl(comb_geo, params, z_offset: float = 0.0,
 
 def export_turbine_stl(turb_geo, params, z_offset: float = 0.0,
                        n_theta: int = 72) -> 'trimesh.Trimesh':
-    """Generate STL mesh for the turbine stage (hub + casing + NGV + rotor blades)."""
+    """Generate STL mesh for the turbine stage with lofted airfoil blades."""
     z = turb_geo.hub_contour[:, 0] + z_offset
     r_hub = turb_geo.hub_contour[:, 1]
     r_casing = turb_geo.casing_contour[:, 1]
@@ -257,61 +444,28 @@ def export_turbine_stl(turb_geo, params, z_offset: float = 0.0,
 
     parts = [shell, disc]
 
-    # NGV stator vanes
     r_hub_val = params.hub_diameter_mm / 2.0
     r_tip_val = params.tip_diameter_mm / 2.0
-    blade_h = r_tip_val - r_hub_val
-    ht_ngv = (params.ngv_thickness_ratio * params.ngv_chord_mm) / 2.0
 
-    for i in range(params.ngv_count):
-        theta = 2 * np.pi * i / params.ngv_count
-        z_le = z_offset + params.ngv_axial_position_mm
-        z_te = z_le + params.ngv_chord_mm
-        r_in = r_hub_val
-        r_out = r_tip_val - 0.5
+    # NGV stator vanes — proper lofted airfoil blades
+    if turb_geo.ngv_profiles:
+        ngv_blades = _build_axial_blade_profiles_3d(
+            turb_geo.ngv_profiles, params.ngv_count,
+            z_offset + params.ngv_axial_position_mm,
+            r_hub_val, r_tip_val - 0.3,
+            n_span=6, n_profile_pts=40
+        )
+        parts.extend(ngv_blades)
 
-        verts = np.array([
-            [r_in * np.cos(theta - ht_ngv/r_in),  r_in * np.sin(theta - ht_ngv/r_in),  z_le],
-            [r_in * np.cos(theta + ht_ngv/r_in),  r_in * np.sin(theta + ht_ngv/r_in),  z_le],
-            [r_out * np.cos(theta + ht_ngv/r_out), r_out * np.sin(theta + ht_ngv/r_out), z_le],
-            [r_out * np.cos(theta - ht_ngv/r_out), r_out * np.sin(theta - ht_ngv/r_out), z_le],
-            [r_in * np.cos(theta - ht_ngv/r_in),  r_in * np.sin(theta - ht_ngv/r_in),  z_te],
-            [r_in * np.cos(theta + ht_ngv/r_in),  r_in * np.sin(theta + ht_ngv/r_in),  z_te],
-            [r_out * np.cos(theta + ht_ngv/r_out), r_out * np.sin(theta + ht_ngv/r_out), z_te],
-            [r_out * np.cos(theta - ht_ngv/r_out), r_out * np.sin(theta - ht_ngv/r_out), z_te],
-        ])
-        faces = np.array([
-            [0,1,2],[0,2,3],[4,6,5],[4,7,6],
-            [0,4,5],[0,5,1],[2,6,7],[2,7,3],
-            [0,3,7],[0,7,4],[1,5,6],[1,6,2]
-        ])
-        parts.append(trimesh.Trimesh(vertices=verts, faces=faces))
-
-    # Rotor blades
-    ht_rot = (params.blade_thickness_ratio * params.blade_chord_mm) / 2.0
-    for i in range(params.blade_count):
-        theta = 2 * np.pi * i / params.blade_count
-        z_le = z_offset + params.blade_axial_position_mm
-        z_te = z_le + params.blade_chord_mm
-        r_in = r_hub_val
-        r_out = r_tip_val - 0.5
-
-        verts = np.array([
-            [r_in * np.cos(theta - ht_rot/r_in),  r_in * np.sin(theta - ht_rot/r_in),  z_le],
-            [r_in * np.cos(theta + ht_rot/r_in),  r_in * np.sin(theta + ht_rot/r_in),  z_le],
-            [r_out * np.cos(theta + ht_rot/r_out), r_out * np.sin(theta + ht_rot/r_out), z_le],
-            [r_out * np.cos(theta - ht_rot/r_out), r_out * np.sin(theta - ht_rot/r_out), z_le],
-            [r_in * np.cos(theta - ht_rot/r_in),  r_in * np.sin(theta - ht_rot/r_in),  z_te],
-            [r_in * np.cos(theta + ht_rot/r_in),  r_in * np.sin(theta + ht_rot/r_in),  z_te],
-            [r_out * np.cos(theta + ht_rot/r_out), r_out * np.sin(theta + ht_rot/r_out), z_te],
-            [r_out * np.cos(theta - ht_rot/r_out), r_out * np.sin(theta - ht_rot/r_out), z_te],
-        ])
-        faces = np.array([
-            [0,1,2],[0,2,3],[4,6,5],[4,7,6],
-            [0,4,5],[0,5,1],[2,6,7],[2,7,3],
-            [0,3,7],[0,7,4],[1,5,6],[1,6,2]
-        ])
-        parts.append(trimesh.Trimesh(vertices=verts, faces=faces))
+    # Rotor blades — proper lofted airfoil blades
+    if turb_geo.rotor_profiles:
+        rotor_blades = _build_axial_blade_profiles_3d(
+            turb_geo.rotor_profiles, params.blade_count,
+            z_offset + params.blade_axial_position_mm,
+            r_hub_val, r_tip_val - params.tip_clearance_mm,
+            n_span=6, n_profile_pts=40
+        )
+        parts.extend(rotor_blades)
 
     return trimesh.util.concatenate(parts)
 

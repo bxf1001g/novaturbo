@@ -153,7 +153,7 @@ def compute_turbine_geometry(params: TurbineParams) -> TurbineGeometry:
     geo.casing_contour = np.column_stack([z, casing_r])
 
     # --- NGV profiles at multiple spans ---
-    for span_frac in [0.0, 0.5, 1.0]:
+    for span_frac in np.linspace(0, 1, 7):
         r = r_hub + span_frac * blade_h
         profile = _generate_blade_profile(
             params.ngv_chord_mm,
@@ -166,7 +166,7 @@ def compute_turbine_geometry(params: TurbineParams) -> TurbineGeometry:
         geo.ngv_profiles.append(profile)
 
     # --- Rotor blade profiles (with twist) ---
-    for span_frac in [0.0, 0.5, 1.0]:
+    for span_frac in np.linspace(0, 1, 7):
         r = r_hub + span_frac * blade_h
 
         # Apply twist: hub has more turning, tip has less
