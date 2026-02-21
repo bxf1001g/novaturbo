@@ -15,6 +15,7 @@
   <a href="#architecture">Architecture</a> •
   <a href="#3d-viewer">3D Viewer</a> •
   <a href="#contributing">Contributing</a> •
+  <a href="https://discord.gg/SQDBr8Mt8">Discord</a> •
   <a href="LICENSE">License</a>
 </p>
 
@@ -27,6 +28,8 @@ NovaTurbo AI is an open-source computational engineering system that **autonomou
 The system combines **parametric geometry generation**, **Brayton-cycle thermodynamics**, a **PyTorch neural-network surrogate model**, **NSGA-II multi-objective optimization**, and a rich **Three.js web UI** with real-time simulation visualizations.
 
 > 🚀 **We're looking for contributors!** Especially in aerospace propulsion physics, CFD, and additive manufacturing. See [Contributing](#contributing).
+>
+> 💬 **Join our Discord:** [discord.gg/SQDBr8Mt8](https://discord.gg/SQDBr8Mt8)
 
 ## Features
 
@@ -173,6 +176,8 @@ Then use the **Dashboard → Run CFD Calibration** button, or enable "Use CFD la
 ## Contributing
 
 **We actively welcome contributions!** This is an ambitious project and we need help from people with expertise in:
+
+💬 **Join the discussion on Discord:** [discord.gg/SQDBr8Mt8](https://discord.gg/SQDBr8Mt8)
 
 - 🚀 **Aerospace Propulsion** — Combustion physics, turbomachinery aerodynamics, nozzle design
 - 🌊 **CFD / Fluid Dynamics** — OpenFOAM/SU2 case setup, mesh generation, validation

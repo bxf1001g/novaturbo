@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing to NovaTurbo! This is an ambitious open-source project aiming to build an AI-powered micro turbojet engine design system, and we need help from people with diverse expertise.
 
+💬 **Join our Discord to discuss ideas before coding:** [discord.gg/SQDBr8Mt8](https://discord.gg/SQDBr8Mt8)
+
 ## Areas Where We Need Help
 
 ### 🚀 Aerospace Propulsion
