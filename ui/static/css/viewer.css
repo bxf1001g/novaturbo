@@ -582,10 +582,11 @@ body {
 .dash-container {
     width: 96vw;
     max-width: 1400px;
-    height: 92vh;
+    max-height: 92vh;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    overflow-y: auto;
     transform: translateY(20px);
     transition: transform 0.3s ease;
 }
@@ -593,6 +594,11 @@ body {
 #dashboard-overlay.visible .dash-container {
     transform: translateY(0);
 }
+
+.dash-container::-webkit-scrollbar { width: 6px; }
+.dash-container::-webkit-scrollbar-track { background: transparent; }
+.dash-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+.dash-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
 /* Header */
 .dash-header {
