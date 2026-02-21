@@ -567,8 +567,9 @@ body {
     background: rgba(10, 14, 23, 0.92);
     backdrop-filter: blur(12px);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    overflow-y: auto;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -582,11 +583,11 @@ body {
 .dash-container {
     width: 96vw;
     max-width: 1400px;
-    max-height: 92vh;
+    margin: 2vh 0;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    overflow-y: auto;
+    padding-bottom: 2vh;
     transform: translateY(20px);
     transition: transform 0.3s ease;
 }
@@ -595,10 +596,10 @@ body {
     transform: translateY(0);
 }
 
-.dash-container::-webkit-scrollbar { width: 6px; }
-.dash-container::-webkit-scrollbar-track { background: transparent; }
-.dash-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-.dash-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+#dashboard-overlay::-webkit-scrollbar { width: 6px; }
+#dashboard-overlay::-webkit-scrollbar-track { background: transparent; }
+#dashboard-overlay::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+#dashboard-overlay::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
 /* Header */
 .dash-header {
@@ -703,13 +704,10 @@ body {
 
 /* Charts Grid */
 .dash-grid {
-    flex: 1;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: minmax(180px, 1fr);
+    grid-auto-rows: minmax(200px, auto);
     gap: 8px;
-    min-height: 0;
-    overflow-y: auto;
 }
 
 .dash-card {
