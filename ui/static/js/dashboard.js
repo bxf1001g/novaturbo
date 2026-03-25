@@ -248,6 +248,8 @@ function initCharts() {
     document.getElementById('target-tsfc').addEventListener('input', onTargetChange);
     document.getElementById('btn-run-validation')?.addEventListener('click', runValidation);
     document.getElementById('btn-run-blade')?.addEventListener('click', runBladeAnalysis);
+    document.getElementById('btn-run-tbc')?.addEventListener('click', runTBCAnalysis);
+    document.getElementById('btn-compare-tbc')?.addEventListener('click', compareTBCCoatings);
     onTargetChange();
     // ESC key
     document.addEventListener('keydown', e => {
@@ -758,4 +760,160 @@ async function runBladeAnalysis() {
         btn.disabled = false;
         btn.textContent = 'Blade Profile Analysis';
     }
+}
+
+// ============================================================
+// Thermal Barrier Coating (TBC) Analysis
+// ============================================================
+
+let tbcChart = null;
+
+async function runTBCAnalysis() {
+    const btn = document.getElementById('btn-run-tbc');
+    const resultsEl = document.getElementById('tbc-results');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+    setDashStatus('Running TBC analysis...', 'ok');
+
+    try {
+        const coating = document.getElementById('tbc-coating-select').value;
+        const resp = await fetch('/api/tbc_analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'single', coating: coating })
+        });
+        const data = await resp.json();
+
+        let txt = `🛡️ ${data.coating_used}\n`;
+        txt += `Category: ${data.coating_category}\n`;
+        txt += `Conductivity: ${data.coating_conductivity_W_mK} W/mK\n`;
+        txt += `Thickness: ${data.coating_thickness_mm}mm\n\n`;
+
+        for (const c of data.components) {
+            const arrow = c.substrate_ok ? '✓' : '⚠';
+            txt += `${arrow} ${c.component.toUpperCase()}\n`;
+            txt += `  Wall: ${c.wall_no_tbc_K.toFixed(0)}K → ${c.substrate_temp_K.toFixed(0)}K (↓${c.improvement_K.toFixed(0)}K)\n`;
+            txt += `  Margin: ${c.margin_before_K > 0 ? '+' : ''}${c.margin_before_K.toFixed(0)}K → +${c.margin_after_K.toFixed(0)}K\n`;
+            txt += `  Mass: +${c.mass_added_g.toFixed(1)}g\n\n`;
+        }
+        txt += `━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        txt += `Total mass: +${data.total_mass_added_g}g\n`;
+        txt += `Avg improvement: ${data.avg_temp_improvement_K}K\n`;
+        txt += `All safe: ${data.all_within_limits ? '✓ YES' : '⚠ NO'}`;
+        resultsEl.textContent = txt;
+
+        renderTBCChart(data);
+        setDashStatus('✓ TBC analysis complete', 'ok');
+    } catch (err) {
+        resultsEl.textContent = 'Error: ' + err.message;
+        setDashStatus('⚠ ' + err.message, 'warn');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analyze Coating';
+    }
+}
+
+async function compareTBCCoatings() {
+    const btn = document.getElementById('btn-compare-tbc');
+    const resultsEl = document.getElementById('tbc-results');
+    btn.disabled = true;
+    btn.textContent = 'Comparing...';
+    setDashStatus('Comparing all TBC coatings...', 'ok');
+
+    try {
+        const resp = await fetch('/api/tbc_analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'compare' })
+        });
+        const data = await resp.json();
+
+        let txt = '📊 TBC COATING COMPARISON\n\n';
+        const entries = Object.entries(data.coatings);
+        entries.sort((a, b) => b[1].avg_improvement_K - a[1].avg_improvement_K);
+
+        for (const [key, c] of entries) {
+            const cat = c.category === 'bio_inspired' ? '🧬' : '⚙️';
+            const ok = c.all_ok ? '✓' : '⚠';
+            txt += `${ok} ${cat} ${c.name}\n`;
+            txt += `  k=${c.k_W_mK}W/mK | ΔT=${c.avg_improvement_K}K | +${c.total_mass_g}g\n\n`;
+        }
+        resultsEl.textContent = txt;
+
+        renderTBCCompareChart(entries);
+        setDashStatus('✓ Comparison complete', 'ok');
+    } catch (err) {
+        resultsEl.textContent = 'Error: ' + err.message;
+        setDashStatus('⚠ ' + err.message, 'warn');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Compare All';
+    }
+}
+
+function renderTBCChart(data) {
+    const canvas = document.getElementById('tbc-chart');
+    if (!canvas) return;
+    if (tbcChart) tbcChart.destroy();
+
+    const labels = data.components.map(c => c.component.charAt(0).toUpperCase() + c.component.slice(1));
+    const before = data.components.map(c => c.wall_no_tbc_K);
+    const after = data.components.map(c => c.substrate_temp_K);
+    const limits = data.components.map(c => {
+        const lims = { combustor: 973, turbine: 973, nozzle: 1253 };
+        return lims[c.component] || 973;
+    });
+
+    tbcChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'No TBC (wall)', data: before, backgroundColor: 'rgba(255,99,71,0.7)', borderWidth: 0 },
+                { label: 'With TBC (substrate)', data: after, backgroundColor: 'rgba(0,229,255,0.7)', borderWidth: 0 },
+                { label: 'Material Limit', data: limits, type: 'line', borderColor: '#ff6d00', borderWidth: 2, borderDash: [5,5], pointRadius: 4, fill: false },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#B0BEC5', font: { size: 10 } } },
+                       title: { display: true, text: 'Wall Temperature: Before vs After TBC', color: '#ECEFF1' } },
+            scales: {
+                y: { title: { display: true, text: 'Temperature (K)', color: '#78909C' }, ticks: { color: '#78909C' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { ticks: { color: '#78909C' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+}
+
+function renderTBCCompareChart(entries) {
+    const canvas = document.getElementById('tbc-chart');
+    if (!canvas) return;
+    if (tbcChart) tbcChart.destroy();
+
+    const labels = entries.map(([k, c]) => c.name.split(' ')[0]);
+    const improvements = entries.map(([k, c]) => c.avg_improvement_K);
+    const masses = entries.map(([k, c]) => c.total_mass_g);
+    const colors = entries.map(([k, c]) => c.category === 'bio_inspired' ? 'rgba(0,229,255,0.7)' : 'rgba(255,152,0,0.7)');
+
+    tbcChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Temp Reduction (K)', data: improvements, backgroundColor: colors, borderWidth: 0, yAxisID: 'y' },
+                { label: 'Mass Added (g)', data: masses, type: 'line', borderColor: '#ff6d00', borderWidth: 2, pointRadius: 4, yAxisID: 'y1', fill: false },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#B0BEC5', font: { size: 10 } } },
+                       title: { display: true, text: 'TBC Comparison: Temp Reduction vs Mass', color: '#ECEFF1' } },
+            scales: {
+                y: { position: 'left', title: { display: true, text: 'ΔT (K)', color: '#00E5FF' }, ticks: { color: '#78909C' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y1: { position: 'right', title: { display: true, text: 'Mass (g)', color: '#ff6d00' }, ticks: { color: '#78909C' }, grid: { drawOnChartArea: false } },
+                x: { ticks: { color: '#78909C', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
 }

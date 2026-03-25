@@ -270,6 +270,28 @@
                         <div id="blade-metrics" class="chart-info" style="flex:1;font-size:11px;white-space:pre-wrap;text-align:left;"></div>
                     </div>
                 </div>
+
+                <!-- TBC Analysis Panel -->
+                <div class="dash-card" style="grid-column: 1 / -1;">
+                    <div class="dash-card-header">🛡️ Thermal Barrier Coating Analysis <span class="dash-card-sub">Bio-Inspired & Conventional</span></div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+                        <select id="tbc-coating-select" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:11px;">
+                            <option value="diatomite_composite">🦠 Diatomite-Silica (Bio)</option>
+                            <option value="prismatic_chitin">🐜 Prismatic Chitin (Bio)</option>
+                            <option value="nacre_layered">🐚 Nacre-Layered (Bio)</option>
+                            <option value="aerogel_ceramic">🧊 Ceramic Aerogel (Bio)</option>
+                            <option value="ysz_standard">⚙️ YSZ Standard</option>
+                            <option value="ysz_ebpvd">⚙️ YSZ EB-PVD</option>
+                            <option value="gadolinium_zirconate">⚙️ Gadolinium Zirconate</option>
+                        </select>
+                        <button id="btn-run-tbc" class="btn-small dash-apply-btn">Analyze Coating</button>
+                        <button id="btn-compare-tbc" class="btn-small dash-apply-btn dash-secondary-btn">Compare All</button>
+                    </div>
+                    <div style="display:flex; gap:12px; margin-top:4px;">
+                        <div style="flex:1;min-height:200px;"><canvas id="tbc-chart"></canvas></div>
+                        <div id="tbc-results" class="chart-info" style="flex:1;font-size:11px;white-space:pre-wrap;text-align:left;max-height:280px;overflow-y:auto;"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

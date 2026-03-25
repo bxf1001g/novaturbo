@@ -862,6 +862,36 @@ def blade_analysis():
     return jsonify(data)
 
 
+@app.route('/api/tbc_analysis', methods=['GET', 'POST'])
+def tbc_analysis():
+    """Run Thermal Barrier Coating analysis."""
+    from src.physics.materials import (
+        run_full_tbc_analysis, compare_all_coatings, TBC_COATINGS
+    )
+
+    if request.method == 'POST':
+        p = request.get_json(silent=True) or {}
+    else:
+        p = {}
+
+    mode = p.get('mode', 'single')
+
+    if mode == 'compare':
+        comparison = compare_all_coatings()
+        return jsonify({'mode': 'compare', 'coatings': comparison})
+    else:
+        coating_key = p.get('coating', 'diatomite_composite')
+        analysis = run_full_tbc_analysis(coating_key)
+        # Also send available coatings list
+        coatings_list = {k: {'name': c.name, 'category': c.category,
+                             'k_W_mK': c.thermal_conductivity_W_mK,
+                             'thickness_mm': c.thickness_mm,
+                             'max_surface_K': c.max_surface_temp_K}
+                         for k, c in TBC_COATINGS.items()}
+        analysis['available_coatings'] = coatings_list
+        return jsonify(analysis)
+
+
 @app.route('/api/lattice/info')
 def get_lattice_info():
     """Return lattice structure metadata including available variations."""
