@@ -40,9 +40,11 @@ The system combines **parametric geometry generation**, **Brayton-cycle thermody
 | 🧠 **Neural Surrogate** | MLP (144K params) trained on 10K+ design variants for instant performance prediction |
 | 📊 **NSGA-II Optimizer** | Multi-objective optimization (thrust vs. weight vs. TSFC) with Pareto front |
 | 🏗️ **TPMS Lattice** | Internal gyroid/Schwarz-P/diamond lattice structures via slab-warp technique |
+| 🛡️ **Thermal Barrier Coatings** | Bio-inspired + conventional TBC analysis with 1-D heat transfer model (7 coatings) |
+| ✈️ **Professional Blade Geometry** | Lofted NACA airfoil turbine blades & curved centrifugal compressor impellers |
 | 🔥 **Flame Simulation** | FumeFX-style combustion particle system (3500 particles, spiral turbulence) |
 | 🌈 **Thermal/Airflow/Stress** | Color-mapped simulation overlays on 3D engine geometry |
-| 📐 **Engineering Dashboard** | Live parameter sliders, Brayton cycle charts, Pareto front visualization |
+| 📐 **Engineering Dashboard** | Live parameter sliders, Brayton cycle charts, Pareto front, TBC analysis |
 | 🔄 **Closed-Loop Training** | Save design variants from UI → retrain surrogate model in real-time |
 | 🎯 **Inverse Design** | Specify target thrust/TSFC → AI suggests optimal geometry parameters |
 | 🔬 **CFD Calibration** | Optional OpenFOAM/SU2 integration for physics-calibrated training labels |
@@ -126,6 +128,10 @@ novaturbo/
 │   │   └── lattice.py        # TPMS lattice (gyroid, Schwarz-P, diamond)
 │   ├── physics/              # Thermodynamic & fluid dynamics solvers
 │   │   ├── brayton.py        # Brayton cycle station analysis
+│   │   ├── materials.py      # Material database & TBC coating analysis
+│   │   ├── blade_analysis.py # XFLR5-style blade profile analysis
+│   │   ├── simulation.py     # Thermal/flow/stress simulation engine
+│   │   ├── validation.py     # Brayton validation vs real engines
 │   │   └── cfd_calibration.py # OpenFOAM/SU2 calibration bridge
 │   ├── ai/                   # Neural network surrogate & optimizer
 │   │   ├── surrogate.py      # MLP surrogate model (PyTorch)
@@ -156,6 +162,7 @@ The web-based viewer provides:
 - **Flame simulation** — FumeFX-style combustion particles with real physics temps
 - **Lattice view** — Toggle TPMS internal structure (gyroid/Schwarz-P/diamond variants)
 - **Dashboard** — Adjust parameters live, view Brayton cycle charts, run inverse design
+- **TBC Analysis** — Compare bio-inspired & conventional thermal barrier coatings side-by-side
 - **Section plane** — Adjustable cross-section slider
 - **STL export** — Screenshot & export current design
 
@@ -181,7 +188,7 @@ Then use the **Dashboard → Run CFD Calibration** button, or enable "Use CFD la
 
 - 🚀 **Aerospace Propulsion** — Combustion physics, turbomachinery aerodynamics, nozzle design
 - 🌊 **CFD / Fluid Dynamics** — OpenFOAM/SU2 case setup, mesh generation, validation
-- 🔬 **Materials Science** — High-temp alloys (Inconel, Hastelloy), additive manufacturing constraints
+- 🔬 **Materials Science** — High-temp alloys, thermal barrier coatings, bio-inspired materials, additive manufacturing
 - 🧠 **Machine Learning** — Physics-informed neural networks, surrogate model improvements
 - 🏗️ **CAD/CAM** — STEP export, build orientation optimization, support structure generation
 - 🎨 **3D Visualization** — Three.js, WebGL, advanced rendering techniques
@@ -197,6 +204,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ### Ideas for First Contributions
 
+- [ ] Integrate TBC-adjusted wall temps into 3D thermal heatmap
+- [ ] Push TIT to 1400K with TBC and show thrust/efficiency gains
 - [ ] Add physics-informed loss function to surrogate training
 - [ ] Implement ensemble model with uncertainty quantification
 - [ ] Add active learning (auto-sample where model uncertainty is highest)
@@ -207,6 +216,32 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 - [ ] Make flame field CFD-driven (temperature/species/velocity per voxel)
 - [ ] Add more engine topologies (axial compressor, afterburner)
 - [ ] Real material property databases (temp-dependent Cp, k, σ_yield)
+
+## Thermal Barrier Coatings (TBC)
+
+NovaTurbo includes a **1-D steady-state heat transfer model** for thermal barrier coatings with 7 built-in materials:
+
+| Coating | Type | k (W/mK) | Mass | Temp Drop |
+|---|---|---|---|---|
+| 🦎 Diatomite-Silica | Bio-inspired | 0.06 | +5.7g | ~403K avg |
+| 🔬 Prismatic Chitin | Bio-inspired | 0.03 | +4.0g | ~407K avg |
+| 🐚 Nacre-Layered | Bio-inspired | 0.80 | +7.6g | ~273K avg |
+| 🌿 Ceramic Aerogel | Bio-inspired | 0.015 | +1.2g | ~410K avg |
+| 🏭 YSZ Standard | Conventional | 2.00 | +50g | ~365K avg |
+| 🏭 YSZ EB-PVD | Conventional | 1.50 | +38g | ~378K avg |
+| 🏭 Gadolinium Zirconate | Conventional | 1.60 | +45g | ~374K avg |
+
+Bio-inspired coatings are **10× lighter** than conventional YSZ while providing **better insulation** — enabling higher turbine inlet temperatures (TIT) for more thrust, or dramatically extended blade life at current temps.
+
+Use the **Dashboard → 🛡️ TBC Analysis** panel to analyze and compare coatings interactively.
+
+## Blade Geometry
+
+Engine blades use **professional lofted airfoil geometry**:
+
+- **Turbine NGV & Rotor** — NACA-profile airfoils lofted across 7 span sections, wrapped onto cylindrical surfaces with proper twist and taper
+- **Compressor Impeller** — Curved radial blades with thickness distribution perpendicular to camberline, plus splitter blades at half-pitch offset
+- **Triangle-strip lofting** with end caps for watertight STL meshes (96K vertices, 185K faces)
 
 ## Engine Specifications (Default)
 
