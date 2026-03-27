@@ -3,11 +3,15 @@ NovaTurbo AI — Micro Turbojet Engine Design System
 Main entry point for the complete pipeline.
 
 Usage:
-    python app.py                          # Run full demo
+    python app.py                          # Run geometry + physics demo
+    python app.py --demo                   # Run full pipeline demo
+    python app.py --geometry               # Show engine geometry
+    python app.py --brayton                # Run Brayton cycle analysis
     python app.py --generate 1000          # Generate 1000 design variants
     python app.py --train data/generated/dataset_1000.csv  # Train AI model
     python app.py --optimize               # Run optimization
-    python app.py --design --thrust 100    # Design engine for 100N thrust
+    python app.py --ui                     # Launch 3D viewer web UI
+    python app.py --ui --port 8080         # Launch UI on custom port
 """
 
 import argparse
@@ -171,6 +175,24 @@ def run_full_demo():
     """)
 
 
+def run_ui(port: int = 5000, debug: bool = False):
+    """Launch the Flask 3D viewer web UI."""
+    print(f"\n{'='*60}")
+    print(f"  NovaTurbo 3D Viewer")
+    print(f"{'='*60}")
+    print(f"\n  Open http://localhost:{port} in your browser")
+    print("  Press Ctrl+C to stop.\n")
+
+    try:
+        from ui.server import app as flask_app
+    except ImportError as exc:
+        print(f"  Error: could not import UI server — {exc}")
+        print("  Make sure Flask is installed: pip install flask flask-cors")
+        sys.exit(1)
+
+    flask_app.run(host='0.0.0.0', port=port, debug=debug)
+
+
 def main():
     parser = argparse.ArgumentParser(description='NovaTurbo AI — Micro Turbojet Engine Design')
     parser.add_argument('--demo', action='store_true', help='Run full demo pipeline')
@@ -181,6 +203,8 @@ def main():
     parser.add_argument('--optimize', action='store_true', help='Run NSGA-II optimization')
     parser.add_argument('--pop', type=int, default=50, help='Optimizer population size')
     parser.add_argument('--gen', type=int, default=50, help='Optimizer generations')
+    parser.add_argument('--ui', action='store_true', help='Launch 3D viewer web UI')
+    parser.add_argument('--port', type=int, default=5000, help='Port for web UI (default: 5000)')
 
     args = parser.parse_args()
 
@@ -197,12 +221,14 @@ def main():
         run_optimization(args.pop, args.gen)
     elif args.demo:
         run_full_demo()
+    elif args.ui:
+        run_ui(port=args.port)
     else:
         # Default: show geometry + physics
         run_geometry_demo()
         run_brayton_demo()
         run_materials_demo()
-        print("\n  Use --demo for full pipeline, --help for all options.")
+        print("\n  Use --demo for full pipeline, --ui for the 3D viewer, --help for all options.")
 
 
 if __name__ == "__main__":

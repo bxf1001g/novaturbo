@@ -74,7 +74,7 @@ python app.py --generate 10000    # Generate 10K design variants (CPU: ~30 min)
 ### Train the Surrogate Model
 
 ```bash
-python app.py --train --epochs 100
+python app.py --train data/generated/dataset_10000.csv
 ```
 
 ### Launch the 3D Viewer
@@ -84,10 +84,11 @@ python app.py --ui
 # Open http://localhost:5000 in your browser
 ```
 
-### One-Shot Design
+### Run Physics Analysis
 
 ```bash
-python app.py --thrust 10 --diameter 100
+python app.py --brayton     # Brayton cycle analysis + material validation
+python app.py --geometry    # Engine geometry summary
 ```
 
 ## Architecture

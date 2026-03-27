@@ -158,7 +158,7 @@ def evaluate_design(row: pd.Series) -> Dict:
             'total_mass_kg': total_mass,
             'thrust_to_weight': thrust_to_weight,
             'lattice_surface_area_ratio': 2.5 + 1.5 * lattice_density,  # TPMS SA multiplier
-            'is_valid': results.is_valid and results.thrust_N > 0,
+            'is_valid': bool(results.is_valid and results.thrust_N > 0),
             'n_warnings': len(results.warnings)
         }
 

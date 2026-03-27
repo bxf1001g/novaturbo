@@ -209,8 +209,24 @@ DEFAULT_MATERIALS = {
 }
 
 
+def _find_materials_config() -> Optional[str]:
+    """Auto-detect config/materials.yaml relative to the project root."""
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(this_dir))
+    candidate = os.path.join(project_root, 'config', 'materials.yaml')
+    return candidate if os.path.exists(candidate) else None
+
+
 def load_materials(config_path: Optional[str] = None) -> Dict[str, MaterialProperties]:
-    """Load materials from YAML config or return defaults."""
+    """Load materials from YAML config or return defaults.
+
+    If *config_path* is omitted the function automatically searches for
+    ``config/materials.yaml`` relative to the project root so callers don't
+    need to know where the file lives.
+    """
+    if config_path is None:
+        config_path = _find_materials_config()
+
     if config_path and yaml:
         try:
             with open(config_path, 'r') as f:
